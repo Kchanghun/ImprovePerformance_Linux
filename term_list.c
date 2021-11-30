@@ -6,12 +6,13 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <asm/delay.h>
-
+#include <linux/completion.h>
 
 #define PSW_THREAD_NUM 4
 
 MODULE_LICENSE( "GPL" );
-
+/*for checking all thread is done*/
+struct completion thread_done;
 struct psw_list
 {
 	int value;
@@ -92,6 +93,9 @@ int __psw_list_traverse(void *_arg)
 			}
 		}
 	}
+	if(arg->index==(PSW_THREAD_NUM-1)){
+		complete_and_exit(&thread_done,0);
+	}
 	kfree(arg);
 	return 0;
 }
@@ -106,6 +110,7 @@ void psw_list_traverse(struct psw_list *head)
 		arg->head = head;
 		kthread_run(&__psw_list_traverse, (void *)arg, "__psw_list_traverse");
 	}
+	wait_for_completion(&thread_done);
 }
 int __init term_list_init(void)
 {
@@ -115,6 +120,7 @@ int __init term_list_init(void)
 	head = (struct psw_list *) kmalloc (sizeof(struct psw_list), GFP_KERNEL);
 	head->value = 0;
 	head->next = NULL;
+	init_completion(&thread_done);
 	long long unsigned start, end;
 	start = ktime_get();
 	for(i = 0; i < num;i++)
