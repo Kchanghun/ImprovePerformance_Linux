@@ -13,51 +13,42 @@
 MODULE_LICENSE( "GPL" );
 /*for checking all thread is done*/
 struct completion thread_done;
+/* Linked List Structure  */
 struct team14_list
 {
 	int value;
 	struct team14_list *next;
 };
-
+/* kthread_run Parameter Structure  */
 struct team14_param
 {
 	int index;
 	struct team14_list *head;
 };
-int team14_list_add(int value, struct team14_list *head)
+/* List Insertion Function */
+void team14_list_add(int value, struct team14_list *head)
 {
 	struct team14_list *cur;
 
 	cur = head;
 
+	/* Assign value  */
 	struct team14_list *new = (struct team14_list*)kmalloc(sizeof(struct team14_list), GFP_KERNEL);
 	new->value = value;
+
+	/* Insert next to head */
 	new->next = head->next;
 	head->next = new;
 	
-
-	if(head == NULL)
-	{
-		printk("asdasd\n");
-		return 1;
-	}
-	/*
-	else
-	{
-		while(cur->next != NULL)
-		{
-			cur = cur->next;
-		}
-	}
-	cur->next = new;
-	*/
-	return 0;
+	return ;
 }
 
+/* Delete Function  */
 void team14_list_delete(struct team14_list *head)
 {
 	struct team14_list *cur = head;
 
+	/* Delete Starting from head  */
 	while(head != NULL)
 	{
 		cur = head;
@@ -67,15 +58,16 @@ void team14_list_delete(struct team14_list *head)
 	return;
 }
 
+/* Actual Traversing Function  */
 int __team14_list_traverse(void *_arg)
 {
 	struct team14_param *arg = (struct team14_param *)_arg;
 	if(arg == NULL)
 	{
-		printk("asd\n");
 		return 0;
 	}
 	int i, k;
+
 	struct team14_list *cur = arg->head;
 	for(i = 0; i < arg->index; i++)
 	{
@@ -84,7 +76,8 @@ int __team14_list_traverse(void *_arg)
 	
 	while(cur != NULL)
 	{
-//		printk("traverse %d : %d\n", arg->index, cur->value);
+	//	printk("traverse %d : %d\n", arg->index, cur->value);
+		/* Move to next "THREAD_NUM" times */
 		for(k = 0; k < TEAM14_THREAD_NUM; k++)
 		{
 
@@ -101,7 +94,7 @@ int __team14_list_traverse(void *_arg)
 	kfree(arg);
 	return 0;
 }
-
+/* Multithreading traverse function  */
 void team14_list_traverse(struct team14_list *head)
 {
 	int i = 0;
@@ -127,8 +120,7 @@ int __init term_list_init(void)
 	start = ktime_get();
 	for(i = 0; i < num;i++)
 	{
-		if(team14_list_add(i, head))
-			return 1;
+		team14_list_add(i, head);
 	}
 	end = ktime_get();
 	printk("insert time = %llu\n", end - start);
