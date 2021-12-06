@@ -8,53 +8,55 @@
 #include <asm/delay.h>
 #include <linux/completion.h>
 
-#define PSW_THREAD_NUM 4
+#define TEAM14_THREAD_NUM 4
 
 MODULE_LICENSE( "GPL" );
 /*for checking all thread is done*/
 struct completion thread_done;
-struct psw_list
+struct team14_list
 {
 	int value;
-	struct psw_list *next;
+	struct team14_list *next;
 };
 
-struct psw_param
+struct team14_param
 {
 	int index;
-	struct psw_list *head;
+	struct team14_list *head;
 };
-void psw_list_add(int value, struct psw_list *head)
+int team14_list_add(int value, struct team14_list *head)
 {
-	struct psw_list *cur;
+	struct team14_list *cur;
 
 	cur = head;
 
-	struct psw_list *new = (struct psw_list*)kmalloc(sizeof(struct psw_list), GFP_KERNEL);
+	struct team14_list *new = (struct team14_list*)kmalloc(sizeof(struct team14_list), GFP_KERNEL);
 	new->value = value;
-	new->next = NULL;
-	/* First add function call*/
+	new->next = head->next;
+	head->next = new;
+	
+
 	if(head == NULL)
 	{
-		head->value = value;
-		head->next = NULL;
-		return;
+		printk("asdasd\n");
+		return 1;
 	}
+	/*
 	else
 	{
-		/* Find position to add */
 		while(cur->next != NULL)
 		{
 			cur = cur->next;
 		}
 	}
 	cur->next = new;
-	return;
+	*/
+	return 0;
 }
 
-void psw_list_delete(struct psw_list *head)
+void team14_list_delete(struct team14_list *head)
 {
-	struct psw_list *cur = head;
+	struct team14_list *cur = head;
 
 	while(head != NULL)
 	{
@@ -65,16 +67,16 @@ void psw_list_delete(struct psw_list *head)
 	return;
 }
 
-int __psw_list_traverse(void *_arg)
+int __team14_list_traverse(void *_arg)
 {
-	struct psw_param *arg = (struct psw_param *)_arg;
+	struct team14_param *arg = (struct team14_param *)_arg;
 	if(arg == NULL)
 	{
 		printk("asd\n");
 		return 0;
 	}
 	int i, k;
-	struct psw_list *cur = arg->head;
+	struct team14_list *cur = arg->head;
 	for(i = 0; i < arg->index; i++)
 	{
 		cur = cur->next;
@@ -83,7 +85,7 @@ int __psw_list_traverse(void *_arg)
 	while(cur != NULL)
 	{
 //		printk("traverse %d : %d\n", arg->index, cur->value);
-		for(k = 0; k < PSW_THREAD_NUM; k++)
+		for(k = 0; k < TEAM14_THREAD_NUM; k++)
 		{
 
 			cur = cur->next;
@@ -93,22 +95,22 @@ int __psw_list_traverse(void *_arg)
 			}
 		}
 	}
-	if(arg->index==(PSW_THREAD_NUM-1)){
+	if(arg->index==(TEAM14_THREAD_NUM-1)){
 		complete_and_exit(&thread_done,0);
 	}
 	kfree(arg);
 	return 0;
 }
 
-void psw_list_traverse(struct psw_list *head)
+void team14_list_traverse(struct team14_list *head)
 {
 	int i = 0;
-	for(i = 0; i < PSW_THREAD_NUM; i++)
+	for(i = 0; i < TEAM14_THREAD_NUM; i++)
 	{		
-		struct psw_param *arg = (struct psw_param *)kmalloc(sizeof(struct psw_param), GFP_KERNEL);
+		struct team14_param *arg = (struct team14_param *)kmalloc(sizeof(struct team14_param), GFP_KERNEL);
 		arg->index = i;
 		arg->head = head;
-		kthread_run(&__psw_list_traverse, (void *)arg, "__psw_list_traverse");
+		kthread_run(&__team14_list_traverse, (void *)arg, "__team14_list_traverse");
 	}
 	wait_for_completion(&thread_done);
 }
@@ -116,8 +118,8 @@ int __init term_list_init(void)
 {
 	int i = 0;
 	int num = 99999;
-	struct psw_list *head;
-	head = (struct psw_list *) kmalloc (sizeof(struct psw_list), GFP_KERNEL);
+	struct team14_list *head;
+	head = (struct team14_list *) kmalloc (sizeof(struct team14_list), GFP_KERNEL);
 	head->value = 0;
 	head->next = NULL;
 	init_completion(&thread_done);
@@ -125,17 +127,18 @@ int __init term_list_init(void)
 	start = ktime_get();
 	for(i = 0; i < num;i++)
 	{
-		psw_list_add(i, head);
+		if(team14_list_add(i, head))
+			return 1;
 	}
 	end = ktime_get();
 	printk("insert time = %llu\n", end - start);
 	start = ktime_get();
-	psw_list_traverse(head);
+	team14_list_traverse(head);
 	end = ktime_get();
 	printk("Travel time = %llu\n", end - start);
 
 	start = ktime_get();
-	psw_list_delete(head);
+	team14_list_delete(head);
 	end = ktime_get();
 	printk("delete time = %llu\n", end - start);
 	return 0;
